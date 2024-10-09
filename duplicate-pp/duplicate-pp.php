@@ -4,7 +4,7 @@ Plugin Name: Duplicate PP
 Description: <strong>Duplicate PP</strong> is a simple plugin which allows you to duplicate any POST,PAGE and CPT Easily. The duplicated POST or PAGE CPT acts as draft.
 Author: Zakaria Binsaifullah
 Author URI: https://gutenbergkits.com
-Version: 3.5.2
+Version: 3.5.3
 Text Domain: duplicate-pp
 License: GPLv2 or later
 License URI:  https://www.gnu.org/licenses/gpl-2.0.html
@@ -192,7 +192,7 @@ if ( ! function_exists( 'dci_plugin_duplicate_pp' ) ) {
             'product_id'           => 4,
             'plugin_name'          => 'Duplicate PP',                                                       // make simple, must not empty
             'plugin_title'         => 'Duplicate PP',                                                       // You can describe your plugin title here
-            'api_endpoint'         => 'https://dashboard.gutenbergkits.com/wp-json/dci/v1/data-insights',
+            'api_endpoint'         => 'https://dashboard.codedivo.com/wp-json/dci/v1/data-insights',
             'slug'                 => 'duplicate-pp',                                                  // write 'no-need' if you don't want to use
             'core_file'            => false,
             'plugin_deactivate_id' => false,
@@ -215,7 +215,6 @@ if ( ! function_exists( 'dci_plugin_duplicate_pp' ) ) {
                 <We>Also, if you need any help, feel free to contact us via our <a href="https://gutenbergkits.com/contact/" target="_blank">support forum</a>. We are always here to help you. We collect some data to improve our product.</p>
             ',
         ) );
-
     }
     add_action( 'admin_init', 'dci_plugin_duplicate_pp' );
 }
