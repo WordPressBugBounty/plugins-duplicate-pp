@@ -50,7 +50,7 @@ class DPP_Admin_Page {
                 <div class="plugin_body">
                     <div class="doc_video_area">
                         <div class="doc_video">
-                          <img src="<?php echo plugin_dir_url(__FILE__); ?>../img/dpp.jpg">
+                          <img src="<?php echo esc_url(plugin_dir_url(__FILE__) . '../img/dpp.jpg'); ?>">
                         </div>
                     </div>
                     <div class="support_area">
