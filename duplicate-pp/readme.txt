@@ -3,7 +3,7 @@ Contributors: binsaifullah
 Tags: post, page, duplicate post, duplicate page, duplicate custom post type
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 3.6
+Stable tag: 3.6.1
 License: GPLv2 or later
 
 **Duplicate PP** is a simple plugin which allows you to duplicate any POST,PAGE and Custom POST TYPE Easily.
@@ -33,6 +33,9 @@ e.g.
 4. Finally active it. It is done.
 
 == Changelog ==
+= 3.6.1 = 
+* Fixed: HTML entities issue fixed for classic editor
+
 = 3.6 =
 * Added: Setting page 
 * Fixed: Security issues

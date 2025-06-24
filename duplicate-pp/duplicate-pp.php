@@ -4,7 +4,7 @@ Plugin Name: Duplicate PP - Duplicate Posts, Pages and Custom Post Types
 Description: <strong>Duplicate PP</strong> is a simple plugin which allows you to duplicate any POST,PAGE and CPT Easily with full meta data support.
 Author: Zakaria Binsaifullah
 Author URI: https://gutenbergkits.com
-Version: 3.6.0
+Version: 3.6.1
 Text Domain: duplicate-pp
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -16,7 +16,7 @@ if ( !defined( "ABSPATH" ) ) {
 }
 
 // Define plugin constants
-define('DPP_VERSION', '3.6.0');
+define('DPP_VERSION', '3.6.1');
 define('DPP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DPP_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -24,8 +24,9 @@ define('DPP_PLUGIN_URL', plugin_dir_url(__FILE__));
 require_once DPP_PLUGIN_DIR . 'includes/admin-settings.php';
 require_once DPP_PLUGIN_DIR . 'includes/meta-handler.php';
 
+
 /**
- * Main duplication function
+ * Main duplication function - FIXED VERSION
  */
 function dpp_duplicate_as_draft() {
     global $wpdb;
@@ -69,13 +70,22 @@ function dpp_duplicate_as_draft() {
     $new_title = $settings['title_prefix'] . $dpp_post->post_title . $settings['title_suffix'];
     $new_slug = $settings['slug_prefix'] . $dpp_post->post_name . $settings['slug_suffix'];
 
+    // FIX: Properly handle post content to prevent double encoding
+    $post_content = $dpp_post->post_content;
+    $post_excerpt = $dpp_post->post_excerpt;
+    
+    // Decode HTML entities to prevent double encoding
+    // This is especially important for Classic Editor content
+    $post_content = html_entity_decode($post_content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $post_excerpt = html_entity_decode($post_excerpt, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
     // Prepare post data
     $dpp_args = array(
         'comment_status' => $dpp_post->comment_status,
         'ping_status'    => $dpp_post->ping_status,
         'post_author'    => get_current_user_id(),
-        'post_content'   => $dpp_post->post_content,
-        'post_excerpt'   => $dpp_post->post_excerpt,
+        'post_content'   => $post_content,  // Using decoded content
+        'post_excerpt'   => $post_excerpt,  // Using decoded excerpt
         'post_name'      => wp_unique_post_slug($new_slug, 0, 'publish', $dpp_post->post_type, $dpp_post->post_parent),
         'post_parent'    => $dpp_post->post_parent,
         'post_password'  => $dpp_post->post_password,
