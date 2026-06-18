@@ -1,0 +1,45 @@
+/**
+ * Settings page tab styles + button color classes for the
+ * Duplicate PP settings page.
+ *
+ * Loaded in addition to admin.css on the settings page only.
+ */
+
+/* Tab content visibility. */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Active tab styling — matches the default WP admin look. */
+.nav-tab-active {
+    background: #ffffff;
+    color: #000000;
+}
+
+/* Shared button look for the welcome-tab links. */
+.dpp-btn {
+    display: inline-block;
+    text-decoration: none;
+    color: #ffffff;
+    padding: 7px 15px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: 0.2s;
+    margin: 0 5px;
+}
+
+.dpp-btn:hover {
+    opacity: 0.85;
+}
+
+.dpp-btn--support { background: #D37F00; }
+.dpp-btn--rate    { background: #0174A2; }
+.dpp-btn--fiverr  { background: #1DBF73; }
+.dpp-btn--upwork  { background: #14A800; }
+.dpp-btn--contact { background: #002B42; }
+.dpp-btn--mail    { background: #EA4335; }

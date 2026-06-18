@@ -1,0 +1,222 @@
+# Copyright (C) 2026 Zakaria Binsaifullah
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Duplicate PP 3.7.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/duplicate-pp\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-06-17T07:16:51+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: duplicate-pp\n"
+
+#. Plugin Name of the plugin
+#: duplicate-pp.php
+#: includes/Settings/Settings_Page.php:119
+#: includes/Settings/Welcome_Tab.php:68
+msgid "Duplicate PP"
+msgstr ""
+
+#. Description of the plugin
+#: duplicate-pp.php
+msgid "<strong>Duplicate PP</strong> is a simple plugin which allows you to duplicate any POST,PAGE and CPT Easily with full meta data support."
+msgstr ""
+
+#. Author of the plugin
+#: duplicate-pp.php
+msgid "Zakaria Binsaifullah"
+msgstr ""
+
+#. Author URI of the plugin
+#: duplicate-pp.php
+msgid "https://gutenbergkits.com"
+msgstr ""
+
+#: includes/Admin_Bar.php:62
+msgid "Cloning Admin_Bar is not allowed."
+msgstr ""
+
+#: includes/Admin_Bar.php:107
+msgid "Duplicate This"
+msgstr ""
+
+#. translators: %s: post title.
+#: includes/Admin_Bar.php:112
+#: includes/Row_Actions.php:89
+#, php-format
+msgid "Duplicate &#8220;%s&#8221;"
+msgstr ""
+
+#: includes/Duplicator.php:63
+msgid "Cloning Duplicator is not allowed."
+msgstr ""
+
+#: includes/Duplicator.php:90
+msgid "Security check failed."
+msgstr ""
+
+#: includes/Duplicator.php:96
+msgid "Invalid post ID."
+msgstr ""
+
+#: includes/Duplicator.php:101
+msgid "You do not have permission to duplicate posts."
+msgstr ""
+
+#: includes/Duplicator.php:106
+msgid "Post not found."
+msgstr ""
+
+#: includes/Meta/Meta_Handler.php:55
+msgid "Cloning Meta_Handler is not allowed."
+msgstr ""
+
+#: includes/Meta/Meta_Handler.php:65
+msgid "Unserializing Meta_Handler is not allowed."
+msgstr ""
+
+#: includes/Notices.php:53
+msgid "Cloning Notices is not allowed."
+msgstr ""
+
+#: includes/Notices.php:77
+msgid "Post duplicated successfully."
+msgstr ""
+
+#: includes/Plugin.php:62
+msgid "Cloning the Plugin singleton is not allowed."
+msgstr ""
+
+#: includes/Plugin.php:72
+msgid "Unserializing the Plugin singleton is not allowed."
+msgstr ""
+
+#: includes/Redirect.php:62
+msgid "Cloning Redirect is not allowed."
+msgstr ""
+
+#: includes/Row_Actions.php:56
+msgid "Cloning Row_Actions is not allowed."
+msgstr ""
+
+#. translators: %s: post title.
+#: includes/Row_Actions.php:90
+msgid "Duplicate"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:97
+msgid "Cloning Settings_Page is not allowed."
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:118
+msgid "Duplicate PP Settings"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:176
+msgid "General Settings"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:183
+msgid "Default Post Status"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:190
+msgid "Title Prefix"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:191
+msgid "Title Suffix"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:192
+msgid "Slug Prefix"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:193
+msgid "Slug Suffix"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:214
+msgid "Configure how duplicated posts should be handled."
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:225
+msgid "Draft"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:226
+msgid "Published"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:227
+msgid "Private"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:228
+msgid "Pending"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:298
+msgid "You do not have sufficient permissions to access this page."
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:306
+msgid "Welcome"
+msgstr ""
+
+#: includes/Settings/Settings_Page.php:309
+msgid "Settings"
+msgstr ""
+
+#: includes/Settings/Settings_Service.php:67
+msgid "Cloning Settings_Service is not allowed."
+msgstr ""
+
+#: includes/Settings/Settings_Service.php:77
+msgid "Unserializing Settings_Service is not allowed."
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:54
+msgid "Cloning Welcome_Tab is not allowed."
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:69
+msgid "A Light-weight Plugin to Duplicate Any Post Type"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:72
+#: includes/Settings/Welcome_Tab.php:102
+msgid "Get Support"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:75
+msgid "Rate Plugin"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:84
+msgid "Duplicate PP screenshot"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:90
+msgid "Freelance Work"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:93
+msgid "@Fiverr"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:96
+msgid "@UpWork"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:105
+msgid "Contact"
+msgstr ""
+
+#: includes/Settings/Welcome_Tab.php:108
+msgid "Send Mail"
+msgstr ""

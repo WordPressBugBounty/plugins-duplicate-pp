@@ -1,9 +1,9 @@
-=== Duplicate Post, Page and Any Custom Post ===
+=== Duplicate PP ===
 Contributors: binsaifullah
 Tags: post, page, duplicate post, duplicate page, duplicate custom post type
 Requires at least: 6.0
-Tested up to: 6.7
-Stable tag: 3.6.1
+Tested up to: 7.0
+Stable tag: 3.7.0
 License: GPLv2 or later
 
 **Duplicate PP** is a simple plugin which allows you to duplicate any POST,PAGE and Custom POST TYPE Easily.
@@ -33,7 +33,16 @@ e.g.
 4. Finally active it. It is done.
 
 == Changelog ==
-= 3.6.1 = 
+= 3.7.0 =
+* Refactored: Full codebase reorganization — every class moved into the `DuplicatePP` namespace, every main class is now a singleton, and the root `duplicate-pp.php` is a clean bootstrap.
+* Improved: Settings read centralized in `DuplicatePP\Settings\Settings_Service` so the `dpp_settings` option has a single source of truth.
+* Improved: Inline CSS and JS extracted from the settings page into `assets/css/admin-settings.css` and `assets/js/admin-settings.js`.
+* Improved: Every user-facing string is translatable with the `duplicate-pp` text domain; every output is escaped.
+* Improved: Meta handler converted from a static utility to a `DuplicatePP\Meta\Meta_Handler` singleton.
+* Added: `uninstall.php` cleans up `dpp_settings` and `dpp_activation_redirect` on full uninstall.
+* Developer: New constants `DPP_PLUGIN_FILE`; legacy constants and option keys preserved for backward compatibility.
+
+= 3.6.1 =
 * Fixed: HTML entities issue fixed for classic editor
 
 = 3.6 =
