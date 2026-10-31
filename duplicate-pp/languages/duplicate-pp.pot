@@ -220,3 +220,43 @@ msgstr ""
 #: includes/Settings/Welcome_Tab.php:108
 msgid "Send Mail"
 msgstr ""
+
+#: includes/Cartlet_Card.php:139
+msgid "Activate Cartlet"
+msgstr ""
+
+#: includes/Cartlet_Card.php:143
+msgid "Install Cartlet free"
+msgstr ""
+
+#: includes/Cartlet_Card.php:150
+msgid "Dismiss this recommendation"
+msgstr ""
+
+#: includes/Cartlet_Card.php:152
+msgid "Recommended for your store"
+msgstr ""
+
+#: includes/Cartlet_Card.php:156
+msgid "Cartlet: share & save carts"
+msgstr ""
+
+#: includes/Cartlet_Card.php:157
+msgid "Free, from the team behind this plugin"
+msgstr ""
+
+#: includes/Cartlet_Card.php:160
+msgid "Duplicating products for a WooCommerce store? Let your shoppers share the cart they build as a link, or save it for later."
+msgstr ""
+
+#: includes/Cartlet_Card.php:162
+msgid "Cart as a link, QR code or WhatsApp message"
+msgstr ""
+
+#: includes/Cartlet_Card.php:163
+msgid "Saved carts, even for guests"
+msgstr ""
+
+#: includes/Cartlet_Card.php:164
+msgid "Ready-made cart links with a coupon"
+msgstr ""

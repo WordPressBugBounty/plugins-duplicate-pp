@@ -28,6 +28,29 @@ final class Settings_Service {
     const OPTION_KEY = 'dpp_settings';
 
     /**
+     * Setting keys that hold a map of on/off switches. Stored maps are
+     * merged with the defaults so a newly added switch gets its default.
+     */
+    const SWITCH_GROUPS = array( 'copy', 'show_in', 'show_original' );
+
+    /**
+     * Post types that are never offered for duplication.
+     */
+    const EXCLUDED_POST_TYPES = array(
+        'attachment',
+        'wp_navigation',
+        'wp_template',
+        'wp_template_part',
+        'wp_global_styles',
+        'wp_font_family',
+        'wp_font_face',
+        'shop_order',
+        'shop_order_refund',
+        'shop_order_placehold',
+        'product_variation',
+    );
+
+    /**
      * Single instance.
      *
      * @var Settings_Service|null
@@ -44,7 +67,12 @@ final class Settings_Service {
     /**
      * Private constructor.
      */
-    private function __construct() {}
+    private function __construct() {
+        // Drop the cache whenever the option changes within the request.
+        add_action( 'update_option_' . self::OPTION_KEY, array( $this, 'flush' ) );
+        add_action( 'add_option_' . self::OPTION_KEY, array( $this, 'flush' ) );
+        add_action( 'delete_option_' . self::OPTION_KEY, array( $this, 'flush' ) );
+    }
 
     /**
      * Get the singleton.
@@ -80,15 +108,53 @@ final class Settings_Service {
     /**
      * Get the canonical defaults used when the option is empty or missing keys.
      *
+     * The defaults reproduce the behavior of 3.x so upgrading sites keep
+     * duplicating exactly as before until they change a setting.
+     *
      * @return array
      */
     public function defaults() {
         return array(
-            'post_status'  => 'draft',
-            'title_prefix' => '',
-            'title_suffix' => ' (Copy)',
-            'slug_prefix'  => '',
-            'slug_suffix'  => '-copy',
+            'post_status'          => 'draft',
+            'title_prefix'         => '',
+            'title_suffix'         => ' (Copy)',
+            'slug_prefix'          => '',
+            'slug_suffix'          => '-copy',
+            'after_clone'          => 'list',
+            'copy'                 => array(
+                'content'        => 1,
+                'excerpt'        => 1,
+                'thumbnail'      => 1,
+                'template'       => 1,
+                'format'         => 1,
+                'taxonomies'     => 1,
+                'meta'           => 1,
+                'password'       => 1,
+                'menu_order'     => 1,
+                'comment_status' => 1,
+                'author'         => 0,
+                'date'           => 0,
+                'children'       => 0,
+                'comments'       => 0,
+            ),
+            'menu_order_increment' => 0,
+            'max_copies'           => 50,
+            'exclude_meta'         => array(),
+            'exclude_taxonomies'   => array(),
+            'post_types'           => array_keys( $this->available_post_types() ),
+            'roles'                => $this->default_roles(),
+            'rewrite_republish'    => 1,
+            'show_in'              => array(
+                'row'       => 1,
+                'bulk'      => 1,
+                'admin_bar' => 1,
+                'editor'    => 1,
+            ),
+            'show_original'        => array(
+                'editor'     => 1,
+                'column'     => 0,
+                'post_state' => 0,
+            ),
         );
     }
 
@@ -103,7 +169,22 @@ final class Settings_Service {
             if ( ! is_array( $stored ) ) {
                 $stored = array();
             }
-            $this->cache = wp_parse_args( $stored, $this->defaults() );
+            $defaults = $this->defaults();
+            $merged   = wp_parse_args( $stored, $defaults );
+
+            foreach ( self::SWITCH_GROUPS as $group ) {
+                $value            = is_array( $merged[ $group ] ) ? $merged[ $group ] : array();
+                $merged[ $group ] = wp_parse_args( $value, $defaults[ $group ] );
+            }
+
+            /**
+             * Filters the resolved Duplicate PP settings.
+             *
+             * @since 4.0.0
+             *
+             * @param array $merged Settings merged with defaults.
+             */
+            $this->cache = apply_filters( 'dpp_settings', $merged );
         }
         return $this->cache;
     }
@@ -118,5 +199,63 @@ final class Settings_Service {
     public function get( $key, $fallback = null ) {
         $all = $this->all();
         return array_key_exists( $key, $all ) ? $all[ $key ] : $fallback;
+    }
+
+    /**
+     * Whether a switch inside one of the switch groups is on.
+     *
+     * @param string $group Group key: copy, show_in or show_original.
+     * @param string $key   Switch key inside the group.
+     * @return bool
+     */
+    public function is_on( $group, $key ) {
+        $values = $this->get( $group, array() );
+        return is_array( $values ) && ! empty( $values[ $key ] );
+    }
+
+    /**
+     * Drop the cached option value.
+     *
+     * @return void
+     */
+    public function flush() {
+        $this->cache = null;
+    }
+
+    /**
+     * Post types that can be enabled for duplication, keyed by name.
+     *
+     * @return \WP_Post_Type[]
+     */
+    public function available_post_types() {
+        $types = get_post_types( array( 'show_ui' => true ), 'objects' );
+        foreach ( self::EXCLUDED_POST_TYPES as $excluded ) {
+            unset( $types[ $excluded ] );
+        }
+
+        /**
+         * Filters the post types Duplicate PP can be enabled for.
+         *
+         * @since 4.0.0
+         *
+         * @param \WP_Post_Type[] $types Post type objects keyed by name.
+         */
+        return apply_filters( 'dpp_available_post_types', $types );
+    }
+
+    /**
+     * Roles that may duplicate by default: every role able to edit posts,
+     * which matches the capability check used before 4.0.
+     *
+     * @return string[]
+     */
+    public function default_roles() {
+        $roles = array();
+        foreach ( wp_roles()->roles as $role_key => $role ) {
+            if ( ! empty( $role['capabilities']['edit_posts'] ) ) {
+                $roles[] = $role_key;
+            }
+        }
+        return $roles;
     }
 }

@@ -47,6 +47,11 @@ final class Plugin {
     private $welcome_tab   = null;
     private $settings_page = null;
     private $meta_handler  = null;
+    private $permissions   = null;
+    private $links         = null;
+    private $rewrite       = null;
+    private $editor        = null;
+    private $columns       = null;
 
     /**
      * Private constructor — use Plugin::instance().
@@ -110,6 +115,11 @@ final class Plugin {
         $this->welcome_tab      = Settings\Welcome_Tab::instance();
         $this->settings_page    = Settings\Settings_Page::instance( $this->settings_service, $this->welcome_tab );
         $this->meta_handler     = Meta\Meta_Handler::instance();
+        $this->permissions      = Permissions::instance();
+        $this->links            = Links::instance();
+        $this->rewrite          = Rewrite_Republish::instance();
+        $this->editor           = Editor::instance();
+        $this->columns          = Columns::instance();
 
         // Give every feature a chance to register its hooks.
         $this->duplicator->register();
@@ -118,6 +128,9 @@ final class Plugin {
         $this->notices->register();
         $this->redirect->register();
         $this->settings_page->register();
+        $this->rewrite->register();
+        $this->editor->register();
+        $this->columns->register();
     }
 
     /**
@@ -148,5 +161,26 @@ final class Plugin {
      */
     public function meta_handler() {
         return $this->meta_handler;
+    }
+
+    /**
+     * @return Permissions
+     */
+    public function permissions() {
+        return $this->permissions;
+    }
+
+    /**
+     * @return Links
+     */
+    public function links() {
+        return $this->links;
+    }
+
+    /**
+     * @return Rewrite_Republish
+     */
+    public function rewrite_republish() {
+        return $this->rewrite;
     }
 }

@@ -1,0 +1,56 @@
+/**
+ * Duplicate PP — editor styles (block editor summary panel and
+ * classic editor publish box).
+ */
+
+/* Block editor. */
+.dpp-status-info {
+    display: block;
+}
+
+.dpp-status-info__inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dpp-status-info__related {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.dpp-status-info__label {
+    color: #757575;
+}
+
+.dpp-status-info__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.dpp-status-info__buttons .components-button {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+/* Classic editor. */
+.dpp-misc-original .dashicons {
+    color: #8c8f94;
+    margin-right: 2px;
+    vertical-align: -3px;
+}
+
+.dpp-classic-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.dpp-classic-actions .button {
+    flex: 1 1 auto;
+    text-align: center;
+}

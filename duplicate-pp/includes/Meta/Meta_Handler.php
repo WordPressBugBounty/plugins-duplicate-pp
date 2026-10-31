@@ -23,6 +23,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Meta_Handler {
 
     /**
+     * Meta keys that are never copied, whatever the settings say.
+     * Entries may use * as a wildcard.
+     */
+    const ALWAYS_EXCLUDED = array(
+        '_wp_old_slug',
+        '_wp_old_date',
+        '_edit_lock',
+        '_edit_last',
+        '_wp_trash_meta_status',
+        '_wp_trash_meta_time',
+        '_wp_desired_post_slug',
+        '_encloseme',
+        '_pingme',
+        '_elementor_css', // Elementor regenerates this.
+        '_dpp_*',         // Duplicate PP's own bookkeeping.
+        '_dp_original',   // Yoast Duplicate Post's marker, in case both were used.
+    );
+
+    /**
      * Single instance.
      *
      * @var Meta_Handler|null
@@ -66,13 +85,41 @@ final class Meta_Handler {
     }
 
     /**
+     * Whether a meta key matches any of the given patterns (* is a wildcard).
+     *
+     * @param string   $key      Meta key.
+     * @param string[] $patterns Exact keys or wildcard patterns.
+     * @return bool
+     */
+    public function matches( $key, $patterns ) {
+        foreach ( $patterns as $pattern ) {
+            $pattern = (string) $pattern;
+            if ( '' === $pattern ) {
+                continue;
+            }
+            if ( false === strpos( $pattern, '*' ) ) {
+                if ( $key === $pattern ) {
+                    return true;
+                }
+                continue;
+            }
+            $regex = '/^' . str_replace( '\*', '.*', preg_quote( $pattern, '/' ) ) . '$/';
+            if ( preg_match( $regex, $key ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Duplicate all post meta from $original_id to $new_id.
      *
-     * @param int $original_id Source post ID.
-     * @param int $new_id      Destination post ID.
+     * @param int      $original_id Source post ID.
+     * @param int      $new_id      Destination post ID.
+     * @param string[] $exclude     Extra meta keys (or * patterns) to skip.
      * @return void
      */
-    public function duplicate_post_meta( $original_id, $new_id ) {
+    public function duplicate_post_meta( $original_id, $new_id, $exclude = array() ) {
         global $wpdb;
 
         $original_id = (int) $original_id;
@@ -96,23 +143,34 @@ final class Meta_Handler {
             return;
         }
 
-        // Meta keys that must never be duplicated.
-        $exclude_meta = array(
-            '_wp_old_slug',
-            '_edit_lock',
-            '_edit_last',
-            '_elementor_css', // Elementor regenerates this.
+        /**
+         * Filters the meta keys (or * patterns) that are not copied.
+         *
+         * @since 4.0.0
+         *
+         * @param string[] $exclude     Keys and patterns.
+         * @param int      $original_id Source post ID.
+         * @param int      $new_id      Destination post ID.
+         */
+        $exclude = apply_filters(
+            'dpp_excluded_meta_keys',
+            array_merge( self::ALWAYS_EXCLUDED, (array) $exclude ),
+            $original_id,
+            $new_id
         );
 
         $select_parts = array();
 
         foreach ( $post_meta_infos as $meta_info ) {
-            if ( in_array( $meta_info->meta_key, $exclude_meta, true ) ) {
+            // Values come straight from the database, so they are copied
+            // byte for byte: unslashing here would corrupt JSON and other
+            // escaped data.
+            $meta_key   = $meta_info->meta_key;
+            $meta_value = $meta_info->meta_value;
+
+            if ( $this->matches( $meta_key, $exclude ) ) {
                 continue;
             }
-
-            $meta_key   = wp_unslash( $meta_info->meta_key );
-            $meta_value = wp_unslash( $meta_info->meta_value );
 
             switch ( $meta_key ) {
                 case '_elementor_data':
@@ -143,6 +201,7 @@ final class Meta_Handler {
             $sql = "INSERT INTO {$wpdb->postmeta} (post_id, meta_key, meta_value) " . implode( ' UNION ALL ', $select_parts );
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
             $wpdb->query( $sql );
+            wp_cache_delete( $new_id, 'post_meta' );
         }
 
         // Page-builder-specific data.
@@ -153,46 +212,42 @@ final class Meta_Handler {
      * Handle Elementor data specifically.
      *
      * @param int    $new_id         Destination post ID.
-     * @param string $elementor_data Serialized elementor data.
+     * @param string $elementor_data Raw _elementor_data JSON.
      * @return void
      */
     private function handle_elementor_data( $new_id, $elementor_data ) {
         $decoded = json_decode( $elementor_data, true );
         if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
+            // Not something we can rewrite — copy it as is.
+            update_post_meta( $new_id, '_elementor_data', wp_slash( $elementor_data ) );
             return;
         }
 
         $processed = $this->process_elementor_elements( $decoded );
         update_post_meta( $new_id, '_elementor_data', wp_slash( wp_json_encode( $processed ) ) );
-
-        // Copy other Elementor-specific meta verbatim from the new post
-        // (it is already a clone of the source at this stage, but we
-        // re-read for clarity and to avoid stale references).
-        update_post_meta( $new_id, '_elementor_version', get_post_meta( $new_id, '_elementor_version', true ) );
-        update_post_meta( $new_id, '_elementor_edit_mode', get_post_meta( $new_id, '_elementor_edit_mode', true ) );
-        update_post_meta( $new_id, '_elementor_template_type', get_post_meta( $new_id, '_elementor_template_type', true ) );
     }
 
     /**
      * Recursively regenerate Elementor element IDs.
+     *
+     * Elementor uses 7-character hex strings for element IDs.
      *
      * @param array $elements Elementor elements tree.
      * @return array
      */
     private function process_elementor_elements( $elements ) {
         foreach ( $elements as &$element ) {
+            if ( ! is_array( $element ) ) {
+                continue;
+            }
             if ( isset( $element['id'] ) ) {
-                $element['id'] = wp_unique_id();
+                $element['id'] = dechex( wp_rand( 0x1000000, 0xFFFFFFF ) );
             }
-
-            if ( isset( $element['settings']['background_image']['id'] ) ) {
-                $element['settings']['background_image']['id'] = wp_unique_id();
-            }
-
             if ( ! empty( $element['elements'] ) && is_array( $element['elements'] ) ) {
                 $element['elements'] = $this->process_elementor_elements( $element['elements'] );
             }
         }
+        unset( $element );
         return $elements;
     }
 
@@ -219,7 +274,7 @@ final class Meta_Handler {
                 continue;
             }
             foreach ( $fields as $field ) {
-                $value = get_field( $field['key'], $original_id );
+                $value = get_field( $field['key'], $original_id, false );
                 update_field( $field['key'], $value, $new_id );
             }
         }
@@ -238,7 +293,7 @@ final class Meta_Handler {
             return;
         }
         $cs_data = $this->process_codestar_data( $cs_data );
-        update_post_meta( $new_id, '_cs_options', $cs_data );
+        update_post_meta( $new_id, '_cs_options', wp_slash( $cs_data ) );
     }
 
     /**
@@ -256,6 +311,7 @@ final class Meta_Handler {
                     $value = 'unique_id_' . wp_unique_id();
                 }
             }
+            unset( $value );
         }
         return $data;
     }
@@ -272,7 +328,7 @@ final class Meta_Handler {
         if ( defined( 'WPB_VC_VERSION' ) ) {
             $wpb_content = get_post_meta( $original_id, '_wpb_shortcodes_custom_css', true );
             if ( $wpb_content ) {
-                update_post_meta( $new_id, '_wpb_shortcodes_custom_css', $wpb_content );
+                update_post_meta( $new_id, '_wpb_shortcodes_custom_css', wp_slash( $wpb_content ) );
             }
         }
 
@@ -280,8 +336,8 @@ final class Meta_Handler {
         if ( class_exists( 'FLBuilderModel' ) ) {
             $beaver_data = get_post_meta( $original_id, '_fl_builder_data', true );
             if ( $beaver_data ) {
-                update_post_meta( $new_id, '_fl_builder_data', $beaver_data );
-                update_post_meta( $new_id, '_fl_builder_draft', get_post_meta( $original_id, '_fl_builder_draft', true ) );
+                update_post_meta( $new_id, '_fl_builder_data', wp_slash( $beaver_data ) );
+                update_post_meta( $new_id, '_fl_builder_draft', wp_slash( get_post_meta( $original_id, '_fl_builder_draft', true ) ) );
             }
         }
     }

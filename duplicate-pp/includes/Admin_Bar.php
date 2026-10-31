@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin bar: adds a "Duplicate This" node to the WP admin bar.
+ * Admin bar: adds a "Duplicate This" menu to the WP admin bar.
  *
  * @package DuplicatePP
  */
@@ -8,6 +8,7 @@
 namespace DuplicatePP;
 
 use WP_Admin_Bar;
+use WP_Post;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,9 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Final class Admin_Bar
  *
  * Adds a "Duplicate This" node to the admin bar when viewing a
- * singular post the current user can edit. Prints two inline CSS
- * rules on admin_head to style the node (kept inline because the
- * rules only apply when the admin bar is rendered).
+ * singular post (front end) or editing one (admin) that the current
+ * user may copy, with "Copy to a new draft" and "Rewrite & Republish"
+ * entries underneath.
  */
 final class Admin_Bar {
 
@@ -69,63 +70,79 @@ final class Admin_Bar {
      */
     public function register() {
         add_action( 'admin_bar_menu', array( $this, 'add_node' ), 999 );
-        add_action( 'admin_head', array( $this, 'print_styles' ) );
     }
 
     /**
-     * Add the duplicate node to the admin bar.
+     * Add the duplicate menu to the admin bar.
      *
      * @param WP_Admin_Bar $wp_admin_bar Admin bar instance.
      * @return void
      */
     public function add_node( $wp_admin_bar ) {
-        if ( ! $wp_admin_bar instanceof WP_Admin_Bar ) {
-            return;
-        }
-        if ( ! is_singular() || ! current_user_can( 'edit_posts' ) ) {
+        if ( ! $wp_admin_bar instanceof WP_Admin_Bar || ! Plugin::instance()->settings()->is_on( 'show_in', 'admin_bar' ) ) {
             return;
         }
 
-        $post_id = get_the_ID();
-        if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+        $post        = $this->current_post();
+        $permissions = Plugin::instance()->permissions();
+        if ( ! $post || ! $permissions->can_copy( $post ) ) {
             return;
         }
 
-        $nonce = wp_create_nonce( 'duplicate_post_' . get_current_blog_id() );
-        $url   = add_query_arg(
-            array(
-                'action'          => Duplicator::ACTION,
-                'post'            => (int) $post_id,
-                'duplicate_nonce' => $nonce,
-            ),
-            admin_url( 'admin.php' )
-        );
+        $links    = Plugin::instance()->links();
+        $new_url  = $links->new_draft_url( $post->ID );
+        $title    = _draft_or_post_title( $post );
 
         $wp_admin_bar->add_node(
             array(
                 'id'    => self::NODE_ID,
-                'title' => __( 'Duplicate This', 'duplicate-pp' ),
-                'href'  => esc_url( $url ),
+                'title' => '<span class="ab-icon dashicons dashicons-admin-page" aria-hidden="true" style="top:2px"></span>'
+                    . '<span class="ab-label">' . esc_html__( 'Duplicate This', 'duplicate-pp' ) . '</span>',
+                'href'  => esc_url( $new_url ),
                 'meta'  => array(
                     'class' => self::NODE_ID,
                     /* translators: %s: post title. */
-                    'title' => sprintf( __( 'Duplicate &#8220;%s&#8221;', 'duplicate-pp' ), get_the_title( $post_id ) ),
+                    'title' => sprintf( __( 'Duplicate &#8220;%s&#8221;', 'duplicate-pp' ), $title ),
                 ),
             )
         );
+
+        $wp_admin_bar->add_node(
+            array(
+                'parent' => self::NODE_ID,
+                'id'     => self::NODE_ID . '_new_draft',
+                'title'  => esc_html__( 'Copy to a new draft', 'duplicate-pp' ),
+                'href'   => esc_url( $new_url ),
+            )
+        );
+
+        if ( $permissions->can_rewrite( $post ) ) {
+            $wp_admin_bar->add_node(
+                array(
+                    'parent' => self::NODE_ID,
+                    'id'     => self::NODE_ID . '_rewrite',
+                    'title'  => esc_html__( 'Rewrite & Republish', 'duplicate-pp' ),
+                    'href'   => esc_url( $links->rewrite_url( $post->ID ) ),
+                )
+            );
+        }
     }
 
     /**
-     * Print the small admin-bar style block.
+     * The post being viewed (front end) or edited (admin), if any.
      *
-     * @return void
+     * @return WP_Post|null
      */
-    public function print_styles() {
-        ?>
-        <style type="text/css">
-            .<?php echo esc_attr( self::NODE_ID ); ?> { display: inline-block; }
-            #wp-admin-bar-<?php echo esc_attr( self::NODE_ID ); ?> .ab-item:hover { color: #00a0d2; }
-        </style>
-        <?php
+    private function current_post() {
+        if ( ! is_admin() ) {
+            return is_singular() ? get_post( get_queried_object_id() ) : null;
+        }
+
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        if ( ! $screen || 'post' !== $screen->base ) {
+            return null;
+        }
+        $post = get_post();
+        return $post instanceof WP_Post && 'auto-draft' !== $post->post_status ? $post : null;
     }
 }

@@ -1,0 +1,291 @@
+/**
+ * Duplicate PP — "Copy multiple" dialog on post list screens.
+ */
+
+.dpp-dialog {
+    --dpp-accent: var(--wp-admin-theme-color, #2271b1);
+    --dpp-accent-soft: color-mix(in srgb, var(--dpp-accent) 9%, #fff);
+    --dpp-ink: #1d2327;
+    --dpp-muted: #787c82;
+    --dpp-line: #e4e6ea;
+    --dpp-canvas: #f5f6f8;
+
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 64px);
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: #fff;
+    color: var(--dpp-ink);
+    box-shadow: 0 24px 48px -12px rgba(16, 24, 40, 0.28), 0 0 0 1px rgba(16, 24, 40, 0.06);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.dpp-dialog[open] {
+    animation: dpp-dialog-in 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.dpp-dialog::backdrop {
+    background: rgba(16, 24, 40, 0.38);
+    backdrop-filter: blur(3px);
+}
+
+@keyframes dpp-dialog-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+.dpp-dialog *,
+.dpp-dialog *::before,
+.dpp-dialog *::after {
+    box-sizing: border-box;
+}
+
+.dpp-dialog__form {
+    padding: 24px;
+}
+
+.dpp-dialog__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.dpp-dialog__icon.dashicons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--dpp-accent-soft);
+    color: var(--dpp-accent);
+    font-size: 20px;
+}
+
+.dpp-dialog .dpp-dialog__title {
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.dpp-dialog__subtitle {
+    margin: 2px 0 0;
+    color: var(--dpp-muted);
+    overflow-wrap: anywhere;
+}
+
+.dpp-dialog__label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* Stepper. */
+.dpp-stepper {
+    display: flex;
+    align-items: stretch;
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px #d0d4d9, 0 1px 2px rgba(16, 24, 40, 0.04);
+    overflow: hidden;
+}
+
+.dpp-stepper:focus-within {
+    box-shadow: 0 0 0 2px var(--dpp-accent);
+}
+
+.dpp-stepper__btn {
+    flex: none;
+    width: 52px;
+    border: 0;
+    background: var(--dpp-canvas);
+    color: var(--dpp-ink);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.dpp-stepper__btn:hover:not(:disabled) {
+    background: #eceef1;
+}
+
+.dpp-stepper__btn:disabled {
+    color: #c3c4c7;
+    cursor: default;
+}
+
+.dpp-stepper__btn:focus-visible {
+    outline: 2px solid var(--dpp-accent);
+    outline-offset: -2px;
+}
+
+.dpp-dialog .dpp-stepper__input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: var(--dpp-ink);
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+}
+
+.dpp-dialog .dpp-stepper__input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.dpp-stepper__input::-webkit-outer-spin-button,
+.dpp-stepper__input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+/* Presets. */
+.dpp-presets {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.dpp-preset {
+    flex: 1;
+    min-height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px var(--dpp-line);
+    color: var(--dpp-ink);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.dpp-preset:hover {
+    background: var(--dpp-canvas);
+}
+
+.dpp-preset.is-active {
+    background: var(--dpp-accent-soft);
+    box-shadow: inset 0 0 0 2px var(--dpp-accent);
+    color: var(--dpp-accent);
+}
+
+.dpp-preset:focus-visible {
+    outline: 2px solid var(--dpp-accent);
+    outline-offset: 2px;
+}
+
+.dpp-dialog__hint {
+    margin: 10px 0 16px;
+    color: var(--dpp-muted);
+    font-size: 12px;
+}
+
+.dpp-dialog__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.dpp-dialog .dpp-dialog__check input {
+    margin: 0;
+}
+
+/* Title preview. */
+.dpp-dialog__preview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--dpp-canvas);
+}
+
+.dpp-dialog__chip {
+    max-width: 100%;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px var(--dpp-line);
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dpp-dialog__more {
+    color: var(--dpp-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.dpp-dialog__total {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+    color: var(--dpp-muted);
+    font-size: 12px;
+}
+
+/* Actions. */
+.dpp-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+.dpp-dialog .dpp-dialog__actions .button {
+    min-height: 38px;
+    padding: 0 16px;
+    border-radius: 8px;
+    line-height: 36px;
+}
+
+.dpp-dialog .dpp-dialog__actions .button-primary.is-busy {
+    position: relative;
+    padding-left: 38px;
+}
+
+.dpp-dialog .dpp-dialog__actions .button-primary.is-busy::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: dpp-spin 0.7s linear infinite;
+}
+
+@keyframes dpp-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dpp-dialog[open],
+    .dpp-dialog .button-primary.is-busy::before {
+        animation: none;
+    }
+}
