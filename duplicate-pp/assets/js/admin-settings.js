@@ -39,6 +39,13 @@
 
         var input = search.querySelector( '.dpp-search__input' );
         var box = search.querySelector( '.dpp-search__results' );
+        var status = search.querySelector( '#dpp-search-status' );
+
+        function announce( text ) {
+            if ( status ) {
+                status.textContent = text;
+            }
+        }
         var i18n = {};
         try {
             i18n = JSON.parse( search.getAttribute( 'data-i18n' ) || '{}' );
@@ -50,12 +57,10 @@
 
         function open() {
             box.hidden = false;
-            input.setAttribute( 'aria-expanded', 'true' );
         }
 
         function close() {
             box.hidden = true;
-            input.setAttribute( 'aria-expanded', 'false' );
             current = -1;
         }
 
@@ -63,6 +68,9 @@
             box.textContent = '';
             box.appendChild( make( 'p', 'dpp-search__note', text ) );
             open();
+            if ( text !== i18n.loading ) {
+                announce( text );
+            }
         }
 
         function action( url, label, variant ) {
@@ -80,6 +88,7 @@
             }
 
             box.appendChild( make( 'p', 'dpp-search__group', term ? i18n.results : i18n.recent ) );
+            announce( 1 === items.length ? i18n.countOne : i18n.count.replace( '%s', items.length ) );
 
             items.forEach( function ( item ) {
                 var row = make( 'div', 'dpp-result' );
@@ -120,6 +129,10 @@
                 row.classList.toggle( 'is-current', i === current );
             } );
             rows[ current ].scrollIntoView( { block: 'nearest' } );
+            var title = rows[ current ].querySelector( '.dpp-result__title' );
+            if ( title ) {
+                announce( title.textContent );
+            }
         }
 
         function run() {
@@ -190,7 +203,7 @@
 
         document.addEventListener( 'keydown', function ( event ) {
             var tag = event.target && event.target.tagName;
-            if ( '/' === event.key && ! /^(INPUT|TEXTAREA|SELECT)$/.test( tag ) && ! event.target.isContentEditable && search.offsetParent ) {
+            if ( '/' === event.key && ! event.ctrlKey && ! event.metaKey && ! event.altKey && ! /^(INPUT|TEXTAREA|SELECT)$/.test( tag ) && ! event.target.isContentEditable && search.offsetParent ) {
                 event.preventDefault();
                 input.focus();
             }
@@ -247,11 +260,27 @@
             return true;
         }
 
+        function currentKey() {
+            var active = wrap.querySelector( '.dpp-tab.is-active' );
+            return active ? active.getAttribute( 'data-tab' ) : '';
+        }
+
         function onTabClick( event ) {
+            // Let the browser handle "open in new tab" clicks.
+            if ( event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ) {
+                return;
+            }
             var key = this.getAttribute( 'data-tab' ) || this.getAttribute( 'data-tab-link' );
-            if ( key && activate( key, true ) ) {
+            if ( ! key ) {
+                return;
+            }
+            var changed = key !== currentKey();
+            if ( activate( key, changed ) ) {
                 event.preventDefault();
-                window.scrollTo( { top: 0, behavior: 'smooth' } );
+                if ( changed ) {
+                    var reduce = window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
+                    window.scrollTo( { top: 0, behavior: reduce ? 'auto' : 'smooth' } );
+                }
             }
         }
 
@@ -272,7 +301,9 @@
         if ( initial && referer ) {
             var start = new URL( window.location.href );
             start.searchParams.set( 'tab', initial.getAttribute( 'data-tab' ) );
-            start.searchParams.delete( 'settings-updated' );
+            [ 'settings-updated', 'dpp_reset' ].forEach( function ( arg ) {
+                start.searchParams.delete( arg );
+            } );
             referer.value = start.pathname + start.search;
         }
 

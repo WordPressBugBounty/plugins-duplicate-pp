@@ -91,7 +91,7 @@ final class Admin_Bar {
 
         $links    = Plugin::instance()->links();
         $new_url  = $links->new_draft_url( $post->ID );
-        $title    = _draft_or_post_title( $post );
+        $title    = Plugin::post_title( $post );
 
         $wp_admin_bar->add_node(
             array(

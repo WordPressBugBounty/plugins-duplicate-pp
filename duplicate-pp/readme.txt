@@ -3,7 +3,7 @@ Contributors: binsaifullah
 Tags: post, page, duplicate post, duplicate page, duplicate custom post type
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 4.0.0
+Stable tag: 4.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 
@@ -67,6 +67,24 @@ e.g.
 9. Permissions: choose the post types and user roles that can copy, and turn Rewrite & Republish on or off.
 
 == Changelog ==
+= 4.0.1 =
+* Fixed: Fatal error on single posts for logged-in users when the admin bar link was enabled (a backend-only function was called on the front end).
+* Fixed: Rewrite & Republish — a failed update of the original no longer wipes its custom fields or deletes the copy; the merge is skipped and the copy kept.
+* Fixed: Rewrite & Republish re-checks at publish time that the user may still edit and publish the original; otherwise the copy returns to draft. Scheduled copies remember who scheduled them for the cron check.
+* Fixed: Publishing a copy whose original was trashed no longer writes into the trash.
+* Fixed: Copies published through other REST routes (e.g. WooCommerce's API) are now merged at the end of the request instead of staying live next to the original.
+* Fixed: Leftover republished copies are cleaned up when a new rewrite starts; republishing one merges again instead of creating a duplicate.
+* Fixed: Page parent and sticky status carry over on republish. Deleting an original detaches a colleague's copy instead of force-deleting it.
+* Fixed: Titles containing "&" showed as "&#038;" in the block editor panel.
+* Fixed: Bulk duplicate skipped selected child pages whose parent could not be copied; it now copies them.
+* Fixed: Taxonomies and roles with uppercase names could not be saved in the settings.
+* Fixed: Activation redirect no longer interferes with AJAX, WP-CLI or bulk plugin activation.
+* Improved: Rewrite & Republish is not offered for WooCommerce products (a republish would roll back sales and stock counters). Filter: dpp_rewrite_excluded_post_types.
+* Improved: Bulk "Duplicate multiple times" is capped at 250 copies per request; the dialog shows the limit for the current selection. Filter: dpp_max_bulk_copies.
+* Improved: Quick search only queries items the user can edit; removed the 3.x nonce fallback; stricter JSON escaping.
+* Improved: Accessibility — tab names stay available to screen readers on small screens, the quick search announces results, and the copy dialog degrades gracefully in browsers without dialog support.
+* Improved: Uninstall removes all plugin post meta.
+
 = 4.0.0 =
 * Added: Rewrite & Republish — edit a published item in a copy and republish it over the original, immediately or on a schedule.
 * Added: "New Draft" action that opens the copy in the editor.

@@ -4,7 +4,7 @@
  * Description: Duplicate posts, pages and custom post types in one click — with custom fields, terms and page builder data. Includes New Draft, bulk duplicate and Rewrite & Republish.
  * Author:      Zakaria Binsaifullah
  * Author URI:  https://gutenbergkits.com
- * Version:     4.0.0
+ * Version:     4.0.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: duplicate-pp
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Public constants. Kept for backward compatibility with any
  * third-party code that might reference them.
  */
-define( 'DPP_VERSION',      '4.0.0' );
+define( 'DPP_VERSION',      '4.0.1' );
 define( 'DPP_PLUGIN_FILE',  __FILE__ );
 define( 'DPP_PLUGIN_DIR',   plugin_dir_path( __FILE__ ) );
 define( 'DPP_PLUGIN_URL',   plugin_dir_url( __FILE__ ) );

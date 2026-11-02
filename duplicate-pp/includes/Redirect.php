@@ -80,13 +80,18 @@ final class Redirect {
         if ( ! get_option( self::OPTION_KEY, false ) ) {
             return;
         }
+        // Not on AJAX/cron requests, and not when several plugins were activated together.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only check.
+        if ( wp_doing_ajax() || wp_doing_cron() || isset( $_GET['activate-multi'] ) || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+            return;
+        }
         delete_option( self::OPTION_KEY );
 
         if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
             return;
         }
 
-        wp_safe_redirect( admin_url( 'admin.php?page=' . Settings_Page::PAGE_SLUG ) );
+        wp_safe_redirect( Settings_Page::url() );
         exit;
     }
 }

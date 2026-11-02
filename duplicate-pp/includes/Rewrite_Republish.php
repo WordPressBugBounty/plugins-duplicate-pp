@@ -58,6 +58,11 @@ final class Rewrite_Republish {
     const REPUBLISHED_META = '_dpp_republished';
 
     /**
+     * Meta on the copy: user who scheduled it. Checked when cron publishes it.
+     */
+    const SCHEDULED_BY_META = '_dpp_rewrite_user';
+
+    /**
      * Meta keys on the original that republishing never touches.
      */
     const PROTECTED_META = array(
@@ -91,6 +96,21 @@ final class Rewrite_Republish {
      * @var int[]
      */
     private $republished = array();
+
+    /**
+     * Copies published in a REST request that still wait for the merge.
+     *
+     * @var int[]
+     */
+    private $pending_rest = array();
+
+    /**
+     * Copies that reached "publish" but must not be merged (no permission,
+     * original trashed). They are taken back to draft at shutdown.
+     *
+     * @var int[]
+     */
+    private $blocked = array();
 
     /**
      * Private constructor.
@@ -231,6 +251,8 @@ final class Rewrite_Republish {
      * @return int|\WP_Error Copy ID or error.
      */
     public function create_copy( $post ) {
+        $this->delete_leftover_copies( $post->ID );
+
         $copy_id = Plugin::instance()->duplicator()->duplicate( $post, array( 'mode' => Duplicator::MODE_REWRITE ) );
         if ( is_wp_error( $copy_id ) ) {
             return $copy_id;
@@ -243,50 +265,110 @@ final class Rewrite_Republish {
     }
 
     /**
-     * After any save: when a copy reaches "publish", merge it into the original.
+     * After any save of a copy: remember who scheduled it, and when it
+     * reaches "publish", merge it into the original.
      *
      * @param int     $post_id Post ID.
      * @param WP_Post $post    Post object.
      * @return void
      */
     public function maybe_republish( $post_id, $post ) {
-        if ( $this->republishing || 'publish' !== $post->post_status || isset( $this->republished[ $post_id ] ) ) {
+        if ( $this->republishing || isset( $this->republished[ $post_id ] ) || isset( $this->blocked[ $post_id ] ) ) {
             return;
         }
 
-        $original = $this->get_original( $post_id );
-        if ( ! $original || get_post_meta( $post_id, self::REPUBLISHED_META, true ) ) {
+        $original_id = $this->get_original_id( $post_id );
+        if ( ! $original_id ) {
             return;
         }
 
-        // REST saves set terms and meta after wp_insert_post: wait for them.
+        // Scheduled: cron publishes without a user, so keep the scheduler's ID for the permission check.
+        if ( 'future' === $post->post_status && get_current_user_id() ) {
+            update_post_meta( $post_id, self::SCHEDULED_BY_META, get_current_user_id() );
+            return;
+        }
+        if ( 'publish' !== $post->post_status ) {
+            return;
+        }
+
+        if ( ! $this->may_republish( $post_id, $original_id ) ) {
+            $this->blocked[ $post_id ] = $original_id;
+            add_action( 'shutdown', array( $this, 'finish_request' ) );
+            return;
+        }
+
+        // REST saves set terms and meta after wp_insert_post: wait for them. Not every
+        // REST route fires rest_after_insert_*, so shutdown picks up whatever is left.
         if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            $this->pending_rest[ $post_id ] = $original_id;
             add_action( 'rest_after_insert_' . $post->post_type, array( $this, 'republish_after_rest' ), 9999 );
+            add_action( 'shutdown', array( $this, 'finish_request' ) );
             return;
         }
 
-        $this->republish( $post, $original );
-        add_action( 'shutdown', array( $this, 'delete_republished_copies' ) );
+        $this->republish( $post, get_post( $original_id ) );
+        add_action( 'shutdown', array( $this, 'finish_request' ) );
     }
 
     /**
-     * REST (block editor) save finished: merge, then take the copy offline.
+     * Whether a copy that just reached "publish" may be merged into its original.
+     *
+     * The permission was checked when the copy was created; it is checked again
+     * here because it can have changed since (demoted user, reassigned post).
+     *
+     * @param int $copy_id     Copy ID.
+     * @param int $original_id Original ID.
+     * @return bool
+     */
+    private function may_republish( $copy_id, $original_id ) {
+        $original = get_post( $original_id );
+        if ( ! $original instanceof WP_Post || 'trash' === $original->post_status ) {
+            return false;
+        }
+
+        $user_id = get_current_user_id();
+        if ( ! $user_id ) {
+            // Cron or CLI: fall back to the user who scheduled the copy.
+            $user_id = (int) get_post_meta( $copy_id, self::SCHEDULED_BY_META, true );
+            if ( ! $user_id ) {
+                return true;
+            }
+        }
+
+        $type = get_post_type_object( $original->post_type );
+        $can  = user_can( $user_id, 'edit_post', $original->ID )
+            && $type && user_can( $user_id, $type->cap->publish_posts );
+
+        /**
+         * Filters whether a published copy may be merged into its original.
+         *
+         * @since 4.0.1
+         *
+         * @param bool $can         Whether the merge is allowed.
+         * @param int  $original_id Original ID.
+         * @param int  $copy_id     Copy ID.
+         * @param int  $user_id     User the check ran for.
+         */
+        return (bool) apply_filters( 'dpp_may_republish', $can, $original->ID, $copy_id, $user_id );
+    }
+
+    /**
+     * REST (block editor) save finished: merge now that terms and meta are stored.
      *
      * @param WP_Post $post Saved post.
      * @return void
      */
     public function republish_after_rest( $post ) {
         $post = get_post( $post );
-        if ( ! $post instanceof WP_Post || 'publish' !== $post->post_status || isset( $this->republished[ $post->ID ] ) ) {
+        if ( ! $post instanceof WP_Post || ! isset( $this->pending_rest[ $post->ID ] ) ) {
             return;
         }
-        $original = $this->get_original( $post->ID );
-        if ( ! $original ) {
-            return;
-        }
+        $original = get_post( $this->pending_rest[ $post->ID ] );
+        unset( $this->pending_rest[ $post->ID ] );
 
-        $this->republish( $post, $original );
-        add_action( 'shutdown', array( $this, 'demote_republished_copies' ) );
+        if ( $original instanceof WP_Post && 'publish' === get_post_status( $post ) ) {
+            $this->republish( get_post( $post->ID ), $original );
+        }
     }
 
     /**
@@ -296,7 +378,7 @@ final class Rewrite_Republish {
      *
      * @param WP_Post $copy     The copy.
      * @param WP_Post $original The original.
-     * @return void
+     * @return bool Whether the original was updated.
      */
     public function republish( $copy, $original ) {
         $this->republishing = true;
@@ -311,7 +393,7 @@ final class Rewrite_Republish {
          */
         do_action( 'dpp_before_republish', $original->ID, $copy->ID );
 
-        wp_update_post(
+        $result = wp_update_post(
             wp_slash(
                 array(
                     'ID'                    => $original->ID,
@@ -320,14 +402,31 @@ final class Rewrite_Republish {
                     'post_content_filtered' => $copy->post_content_filtered,
                     'post_excerpt'          => $copy->post_excerpt,
                     'post_password'         => $copy->post_password,
+                    'post_parent'           => $copy->post_parent,
                     'menu_order'            => $copy->menu_order,
                     'comment_status'        => $copy->comment_status,
                     'ping_status'           => $copy->ping_status,
                 )
-            )
+            ),
+            true
         );
 
+        if ( ! $result || is_wp_error( $result ) ) {
+            // Leave both posts as they are: the copy stays published until the
+            // user acts, which is recoverable; a half-merged original is not.
+            $this->republishing = false;
+            return false;
+        }
+
         $this->sync_terms_and_meta( $copy->ID, $original->ID );
+
+        if ( 'post' === $original->post_type ) {
+            if ( is_sticky( $copy->ID ) ) {
+                stick_post( $original->ID );
+            } else {
+                unstick_post( $original->ID );
+            }
+        }
 
         update_post_meta( $copy->ID, self::REPUBLISHED_META, time() );
         $this->republished[ $copy->ID ] = $original->ID;
@@ -343,6 +442,7 @@ final class Rewrite_Republish {
         do_action( 'dpp_after_republish', $original->ID, $copy->ID );
 
         $this->republishing = false;
+        return true;
     }
 
     /**
@@ -382,29 +482,86 @@ final class Rewrite_Republish {
     }
 
     /**
-     * Shutdown: delete copies republished during this request.
+     * Shutdown: finish what this request started.
+     *
+     * - REST copies that no rest_after_insert_* hook merged are merged now.
+     * - Merged copies are deleted, except in REST requests, where they are only
+     *   taken offline (the block editor still saves meta boxes in a second
+     *   request; the editor script then calls the finish action).
+     * - Blocked copies go back to draft so they never sit published next to
+     *   their original.
      *
      * @return void
      */
-    public function delete_republished_copies() {
+    public function finish_request() {
+        foreach ( $this->pending_rest as $copy_id => $original_id ) {
+            unset( $this->pending_rest[ $copy_id ] );
+            $copy     = get_post( $copy_id );
+            $original = get_post( $original_id );
+            if ( $copy instanceof WP_Post && $original instanceof WP_Post && 'publish' === $copy->post_status ) {
+                $this->republish( $copy, $original );
+            }
+        }
+
+        $is_rest = defined( 'REST_REQUEST' ) && REST_REQUEST;
         foreach ( array_keys( $this->republished ) as $copy_id ) {
-            wp_delete_post( $copy_id, true );
+            if ( $is_rest ) {
+                $this->set_status_quietly( $copy_id, 'draft' );
+            } else {
+                wp_delete_post( $copy_id, true );
+            }
+        }
+
+        foreach ( array_keys( $this->blocked ) as $copy_id ) {
+            $this->set_status_quietly( $copy_id, 'draft' );
         }
     }
 
     /**
-     * Shutdown (REST): take republished copies offline without firing save
-     * hooks, so the copy never sits published next to the original. The
-     * editor script deletes it through the finish action.
+     * Change a post's status without firing save hooks.
      *
+     * @param int    $post_id Post ID.
+     * @param string $status  New status.
      * @return void
      */
-    public function demote_republished_copies() {
+    private function set_status_quietly( $post_id, $status ) {
         global $wpdb;
-        foreach ( array_keys( $this->republished ) as $copy_id ) {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->update( $wpdb->posts, array( 'post_status' => 'draft' ), array( 'ID' => $copy_id ) );
-            clean_post_cache( $copy_id );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $wpdb->update( $wpdb->posts, array( 'post_status' => $status ), array( 'ID' => (int) $post_id ) );
+        clean_post_cache( $post_id );
+    }
+
+    /**
+     * Delete copies of an original that were already merged but never
+     * cleaned up (the editor was closed before the finish action ran).
+     *
+     * @param int $original_id Original ID.
+     * @return void
+     */
+    private function delete_leftover_copies( $original_id ) {
+        $leftovers = get_posts(
+            array(
+                'post_type'        => 'any',
+                'post_status'      => 'any',
+                'posts_per_page'   => 20,
+                'fields'           => 'ids',
+                'suppress_filters' => true,
+                'meta_query'       => array( // phpcs:ignore WordPress.DB.SlowDBQuery
+                    array(
+                        'key'   => self::COPY_META,
+                        'value' => (int) $original_id,
+                    ),
+                    array(
+                        'key'     => self::REPUBLISHED_META,
+                        'compare' => 'EXISTS',
+                    ),
+                ),
+            )
+        );
+        foreach ( $leftovers as $copy_id ) {
+            if ( current_user_can( 'delete_post', $copy_id ) ) {
+                wp_delete_post( $copy_id, true );
+            }
         }
     }
 
@@ -485,10 +642,17 @@ final class Rewrite_Republish {
             return;
         }
 
-        // Deleting an original permanently also deletes its unfinished copy.
+        // Deleting an original permanently also removes its unfinished copy —
+        // unless the current user may not delete it, in which case the copy
+        // is detached and lives on as a normal draft.
         $copy_id = (int) get_post_meta( $post_id, self::HAS_COPY_META, true );
         if ( $copy_id && $this->get_original_id( $copy_id ) === (int) $post_id ) {
-            wp_delete_post( $copy_id, true );
+            if ( ! get_current_user_id() || current_user_can( 'delete_post', $copy_id ) ) {
+                wp_delete_post( $copy_id, true );
+            } else {
+                delete_post_meta( $copy_id, self::COPY_META );
+                delete_post_meta( $copy_id, self::SCHEDULED_BY_META );
+            }
         }
     }
 

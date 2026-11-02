@@ -1765,12 +1765,17 @@ body.settings_page_duplicate-pp-settings {
         right: 14px;
     }
 
-    .dpp-tab > span:not(.dashicons) {
-        display: none;
-    }
-
-    .dpp-tab.is-active > span:not(.dashicons) {
-        display: inline;
+    /* Icon-only tabs: hide the label visually, keep it for assistive tech. */
+    .dpp-tab:not(.is-active) > span:not(.dashicons) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 }
 

@@ -122,18 +122,8 @@ final class Links {
     public function verify( $action, $post_id ) {
         // phpcs:disable WordPress.Security.NonceVerification.Recommended -- this is the nonce check.
         $nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_key( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
-        if ( '' !== $nonce && wp_verify_nonce( $nonce, $this->nonce_action( $action, $post_id ) ) ) {
-            return true;
-        }
-
-        // Links built by 3.x (and any third-party code copying them) carry a per-blog nonce.
-        if ( Duplicator::ACTION === $action && isset( $_REQUEST['duplicate_nonce'] ) ) {
-            $legacy = sanitize_key( wp_unslash( $_REQUEST['duplicate_nonce'] ) );
-            return (bool) wp_verify_nonce( $legacy, 'duplicate_post_' . get_current_blog_id() );
-        }
         // phpcs:enable
-
-        return false;
+        return '' !== $nonce && (bool) wp_verify_nonce( $nonce, $this->nonce_action( $action, $post_id ) );
     }
 
     /**

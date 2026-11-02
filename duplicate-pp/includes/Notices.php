@@ -160,7 +160,7 @@ final class Notices {
         $message = sprintf(
             /* translators: %s: original post title (linked). */
             esc_html__( 'You are editing a Rewrite & Republish copy of %s. When you publish it, your changes replace the original and this copy is removed. Schedule it to republish later.', 'duplicate-pp' ),
-            sprintf( '<a href="%1$s"><strong>%2$s</strong></a>', esc_url( get_permalink( $original_id ) ), esc_html( _draft_or_post_title( $original_id ) ) )
+            sprintf( '<a href="%1$s"><strong>%2$s</strong></a>', esc_url( get_permalink( $original_id ) ), esc_html( Plugin::post_title( $original_id ) ) )
         );
         $this->print_notice( 'info', $message, false );
     }

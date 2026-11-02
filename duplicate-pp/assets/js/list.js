@@ -11,7 +11,21 @@
 ( function ( data ) {
     'use strict';
 
-    if ( ! data || ! window.HTMLDialogElement ) {
+    if ( ! data ) {
+        return;
+    }
+
+    if ( ! window.HTMLDialogElement ) {
+        // No dialog support (Safari < 15.4, Firefox < 98): remove the entry points
+        // rather than leave links that can only end in "nothing copied".
+        document.addEventListener( 'DOMContentLoaded', function () {
+            document.querySelectorAll( '.dpp_multiple' ).forEach( function ( span ) {
+                span.remove();
+            } );
+            document.querySelectorAll( 'select[name="action"] option[value="' + data.bulkAction + '"], select[name="action2"] option[value="' + data.bulkAction + '"]' ).forEach( function ( option ) {
+                option.remove();
+            } );
+        } );
         return;
     }
 
@@ -45,7 +59,17 @@
     }
 
     function format( template, value ) {
-        return template.replace( /%[sd]/, value );
+        return template.replace( /%[sd]/, function () {
+            return String( value );
+        } );
+    }
+
+    function formatAll( template, values ) {
+        var i = 0;
+        return template.replace( /%(\d+\$)?[sd]/g, function ( match, pos ) {
+            var index = pos ? parseInt( pos, 10 ) - 1 : i++;
+            return String( values[ index ] );
+        } );
     }
 
     // Mirrors Duplicator::numbered_suffix(): " (Copy)" -> " (Copy 3)".
@@ -135,23 +159,36 @@
     // ---- State. --------------------------------------------------------
 
     var state = { mode: 'row', url: '', title: '', items: 0, onConfirm: null };
+    var limit = max;
+    var busy = false;
+
+    // Mirrors Duplicator::max_copies_for_bulk().
+    function limitFor( options ) {
+        if ( options.mode !== 'bulk' ) {
+            return max;
+        }
+        var total = Math.max( 1, parseInt( data.bulkTotal, 10 ) || max );
+        return Math.max( 1, Math.min( max, Math.floor( total / Math.max( 1, options.items ) ) ) );
+    }
 
     function count() {
         var n = parseInt( input.value, 10 );
-        return isNaN( n ) ? 0 : Math.min( Math.max( n, 1 ), max );
+        return isNaN( n ) ? 0 : Math.min( Math.max( n, 1 ), limit );
     }
 
     function setCount( n ) {
-        input.value = String( Math.min( Math.max( n, 1 ), max ) );
+        input.value = String( Math.min( Math.max( n, 1 ), limit ) );
         refresh();
     }
 
     function refresh() {
         var n = count();
         less.disabled = n <= 1;
-        more.disabled = n >= max;
+        more.disabled = n >= limit;
         presets.querySelectorAll( '.dpp-preset' ).forEach( function ( chip ) {
-            chip.classList.toggle( 'is-active', parseInt( chip.getAttribute( 'data-value' ), 10 ) === n );
+            var value = parseInt( chip.getAttribute( 'data-value' ), 10 );
+            chip.classList.toggle( 'is-active', value === n );
+            chip.disabled = value > limit;
         } );
 
         var total = state.mode === 'bulk' ? n * state.items : n;
@@ -176,6 +213,12 @@
     function open( options ) {
         var saved = remembered();
         state = options;
+        limit = limitFor( options );
+        input.max = String( limit );
+        hint.textContent = options.mode === 'bulk' && limit < max
+            ? formatAll( i18n.limitBulk, [ limit, limit * options.items ] )
+            : format( i18n.limit, limit );
+        busy = false;
         subtitle.textContent = options.mode === 'bulk'
             ? format( i18n.ofSelected, options.items )
             : format( i18n.of, options.title );
@@ -202,8 +245,13 @@
         dialog.close();
     } );
     dialog.addEventListener( 'click', function ( event ) {
-        if ( event.target === dialog ) {
+        if ( event.target === dialog && ! busy ) {
             dialog.close();
+        }
+    } );
+    dialog.addEventListener( 'cancel', function ( event ) {
+        if ( busy ) {
+            event.preventDefault();
         }
     } );
 
@@ -214,6 +262,7 @@
             return;
         }
         remember( { count: n, numbered: numbered.checked } );
+        busy = true;
         submit.disabled = true;
         cancel.disabled = true;
         submit.classList.add( 'is-busy' );
@@ -252,9 +301,18 @@
         return;
     }
     var confirmed = false;
+    var lastApply = null;
+
+    // Fallback for browsers without event.submitter.
+    listForm.addEventListener( 'click', function ( event ) {
+        var button = event.target.closest && event.target.closest( '#doaction, #doaction2' );
+        if ( button ) {
+            lastApply = button;
+        }
+    }, true );
 
     listForm.addEventListener( 'submit', function ( event ) {
-        var submitter = event.submitter;
+        var submitter = event.submitter || lastApply || document.getElementById( 'doaction' );
         if ( confirmed || ! submitter || ( 'doaction' !== submitter.id && 'doaction2' !== submitter.id ) ) {
             return;
         }

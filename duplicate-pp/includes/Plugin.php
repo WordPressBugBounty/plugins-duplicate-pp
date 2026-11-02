@@ -143,6 +143,22 @@ final class Plugin {
     }
 
     /**
+     * Title of a post for display, or "(no title)".
+     *
+     * Use this instead of core's _draft_or_post_title(): that one lives in
+     * wp-admin/includes/template.php, which is not loaded on the front end
+     * (where the admin bar runs), and it returns already-escaped HTML.
+     * The result here is plain text — escape it on output.
+     *
+     * @param \WP_Post|int $post Post object or ID.
+     * @return string
+     */
+    public static function post_title( $post ) {
+        $title = get_the_title( $post );
+        return '' === trim( (string) $title ) ? __( '(no title)', 'duplicate-pp' ) : (string) $title;
+    }
+
+    /**
      * @return Duplicator
      */
     public function duplicator() {

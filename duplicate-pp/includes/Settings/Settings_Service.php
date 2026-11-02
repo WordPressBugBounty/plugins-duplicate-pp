@@ -184,7 +184,13 @@ final class Settings_Service {
              *
              * @param array $merged Settings merged with defaults.
              */
-            $this->cache = apply_filters( 'dpp_settings', $merged );
+            $merged = apply_filters( 'dpp_settings', $merged );
+
+            // Default post types come from get_post_types(); before init that list is incomplete.
+            if ( ! did_action( 'init' ) ) {
+                return $merged;
+            }
+            $this->cache = $merged;
         }
         return $this->cache;
     }

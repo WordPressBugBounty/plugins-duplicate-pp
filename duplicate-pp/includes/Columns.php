@@ -128,7 +128,7 @@ final class Columns {
         }
 
         $url = current_user_can( 'edit_post', $original->ID ) ? get_edit_post_link( $original->ID ) : get_permalink( $original );
-        printf( '<a href="%1$s">%2$s</a>', esc_url( $url ), esc_html( _draft_or_post_title( $original ) ) );
+        printf( '<a href="%1$s">%2$s</a>', esc_url( $url ), esc_html( Plugin::post_title( $original ) ) );
     }
 
     /**

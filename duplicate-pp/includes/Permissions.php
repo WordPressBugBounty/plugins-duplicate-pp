@@ -129,6 +129,7 @@ final class Permissions {
         $post = empty( $post ) ? null : get_post( $post );
         $can  = $post instanceof WP_Post
             && Plugin::instance()->settings()->get( 'rewrite_republish' )
+            && ! in_array( $post->post_type, $this->rewrite_excluded_post_types(), true )
             && 'publish' === $post->post_status
             && $this->can_copy( $post )
             && $this->can_publish( $post->post_type )
@@ -143,6 +144,25 @@ final class Permissions {
          * @param WP_Post|null $post The post being checked.
          */
         return (bool) apply_filters( 'dpp_can_rewrite', $can, $post );
+    }
+
+    /**
+     * Post types Rewrite & Republish is never offered for.
+     *
+     * Products keep live counters (sales, stock, ratings) in meta that a
+     * republish would overwrite with the values from when the copy was made.
+     *
+     * @return string[]
+     */
+    public function rewrite_excluded_post_types() {
+        /**
+         * Filters the post types Rewrite & Republish is not available for.
+         *
+         * @since 4.0.1
+         *
+         * @param string[] $types Post type names.
+         */
+        return (array) apply_filters( 'dpp_rewrite_excluded_post_types', array( 'product' ) );
     }
 
     /**

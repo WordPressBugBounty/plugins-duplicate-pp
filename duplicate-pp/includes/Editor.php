@@ -143,7 +143,7 @@ final class Editor {
             DPP_VERSION,
             true
         );
-        wp_add_inline_script( self::HANDLE, 'window.dppEditor = ' . wp_json_encode( $this->data( $post ) ) . ';', 'before' );
+        wp_add_inline_script( self::HANDLE, 'window.dppEditor = ' . wp_json_encode( $this->data( $post ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) . ';', 'before' );
         wp_set_script_translations( self::HANDLE, 'duplicate-pp', DPP_PLUGIN_DIR . 'languages' );
 
         wp_enqueue_style( self::HANDLE, DPP_PLUGIN_URL . 'assets/css/editor.css', array(), DPP_VERSION );
@@ -221,7 +221,7 @@ final class Editor {
     private function post_ref( $post_id ) {
         return array(
             'id'      => (int) $post_id,
-            'title'   => _draft_or_post_title( $post_id ),
+            'title'   => html_entity_decode( Plugin::post_title( $post_id ), ENT_QUOTES, 'UTF-8' ),
             'editUrl' => current_user_can( 'edit_post', $post_id ) ? (string) get_edit_post_link( $post_id, 'raw' ) : '',
             'viewUrl' => (string) get_permalink( $post_id ),
         );

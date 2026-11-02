@@ -16,9 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Final class Meta_Handler
  *
  * Singleton service that duplicates post meta for a freshly
- * inserted post. Handles Elementor, ACF, Codestar Framework,
- * WPBakery, and Beaver Builder data in addition to standard
- * post meta. Converted from the legacy static utility.
+ * inserted post. Handles Elementor, Codestar Framework, WPBakery
+ * and Beaver Builder data in addition to standard post meta (ACF
+ * fields are plain post meta and copy through the generic path).
  */
 final class Meta_Handler {
 
@@ -177,10 +177,6 @@ final class Meta_Handler {
                     $this->handle_elementor_data( $new_id, $meta_value );
                     break;
 
-                case '_acf':
-                    $this->handle_acf_fields( $new_id, $original_id );
-                    break;
-
                 case '_cs_options':
                     $this->handle_codestar_data( $new_id, $meta_value );
                     break;
@@ -249,35 +245,6 @@ final class Meta_Handler {
         }
         unset( $element );
         return $elements;
-    }
-
-    /**
-     * Handle Advanced Custom Fields.
-     *
-     * @param int $new_id      Destination post ID.
-     * @param int $original_id Source post ID.
-     * @return void
-     */
-    private function handle_acf_fields( $new_id, $original_id ) {
-        if ( ! function_exists( 'acf_get_field_groups' ) ) {
-            return;
-        }
-
-        $field_groups = acf_get_field_groups( array( 'post_id' => $original_id ) );
-        if ( empty( $field_groups ) ) {
-            return;
-        }
-
-        foreach ( $field_groups as $field_group ) {
-            $fields = acf_get_fields( $field_group );
-            if ( empty( $fields ) ) {
-                continue;
-            }
-            foreach ( $fields as $field ) {
-                $value = get_field( $field['key'], $original_id, false );
-                update_field( $field['key'], $value, $new_id );
-            }
-        }
     }
 
     /**

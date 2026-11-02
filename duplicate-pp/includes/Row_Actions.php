@@ -93,7 +93,7 @@ final class Row_Actions {
 
         $permissions = Plugin::instance()->permissions();
         $links       = Plugin::instance()->links();
-        $title       = _draft_or_post_title( $post );
+        $title       = Plugin::post_title( $post );
 
         if ( $permissions->can_copy( $post ) ) {
             $actions['duplicate'] = $this->link(
@@ -199,60 +199,67 @@ final class Row_Actions {
             return $sendback;
         }
 
-        $plugin   = Plugin::instance();
-        $post_ids = array_map( 'intval', (array) $post_ids );
-        $done     = 0;
-        $skipped  = 0;
-        $copies   = 1;
-        $numbered = false;
+        $plugin     = Plugin::instance();
+        $duplicator = $plugin->duplicator();
+        $post_ids   = array_values( array_unique( array_map( 'intval', (array) $post_ids ) ) );
+        $sendback   = remove_query_arg( array( 'duplicated', 'dpp_ids', 'dpp_rewrite', 'dpp_skipped' ), $sendback );
+        $done       = 0;
+        $skipped    = 0;
+        $copies     = 1;
+        $numbered   = false;
 
         if ( self::BULK_MULTIPLE === $action ) {
-            $copies = $plugin->duplicator()->requested_count( 'dpp_count' );
+            $copies = $duplicator->requested_count( 'dpp_count' );
             if ( ! $copies ) {
-                return add_query_arg( 'dpp_skipped', count( $post_ids ), remove_query_arg( array( 'duplicated', 'dpp_ids', 'dpp_rewrite', 'dpp_skipped' ), $sendback ) );
+                return add_query_arg( 'dpp_skipped', count( $post_ids ), $sendback );
             }
+            // Keep one request within reason, however many items were selected.
+            $copies = min( $copies, $duplicator->max_copies_for_bulk( count( $post_ids ) ) );
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- core checked the bulk-posts nonce.
             $numbered = ! empty( $_REQUEST['dpp_numbered'] );
         }
 
-        foreach ( $post_ids as $post_id ) {
-            $post = get_post( $post_id );
-
-            if ( self::BULK_REWRITE === $action ) {
-                if ( ! $plugin->permissions()->can_rewrite( $post ) ) {
+        if ( self::BULK_REWRITE === $action ) {
+            foreach ( $post_ids as $post_id ) {
+                $post = get_post( $post_id );
+                if ( ! $plugin->permissions()->can_rewrite( $post ) || is_wp_error( Rewrite_Republish::instance()->create_copy( $post ) ) ) {
                     ++$skipped;
-                    continue;
+                } else {
+                    ++$done;
                 }
-                $result = Rewrite_Republish::instance()->create_copy( $post );
-            } else {
-                if ( ! $plugin->permissions()->can_copy( $post ) ) {
-                    ++$skipped;
-                    continue;
-                }
-                // Children are copied with their parent: don't copy them twice.
-                if ( $plugin->settings()->is_on( 'copy', 'children' ) && array_intersect( get_post_ancestors( $post ), $post_ids ) ) {
-                    continue;
-                }
-                if ( self::BULK_MULTIPLE === $action ) {
-                    $made     = $plugin->duplicator()->duplicate_many( $post, $copies, $numbered );
-                    $done    += $made;
-                    $skipped += $copies - $made;
-                    continue;
-                }
-                $result = $plugin->duplicator()->duplicate( $post, array( 'mode' => Duplicator::MODE_CLONE ) );
             }
+            return add_query_arg( array_filter( array( 'dpp_rewrite' => $done, 'dpp_skipped' => $skipped ) ), $sendback );
+        }
 
-            if ( is_wp_error( $result ) ) {
+        // Items the user may copy. When child pages are copied with their parent,
+        // a selected child whose ancestor is also being copied is left to the parent.
+        $copyable = array_filter(
+            $post_ids,
+            function ( $post_id ) use ( $plugin ) {
+                return $plugin->permissions()->can_copy( $post_id );
+            }
+        );
+        $skipped += count( $post_ids ) - count( $copyable );
+        $with_children = $plugin->settings()->is_on( 'copy', 'children' );
+
+        foreach ( $copyable as $post_id ) {
+            if ( $with_children && array_intersect( get_post_ancestors( $post_id ), $copyable ) ) {
+                continue;
+            }
+            if ( self::BULK_MULTIPLE === $action ) {
+                $made     = $duplicator->duplicate_many( get_post( $post_id ), $copies, $numbered );
+                $done    += $made;
+                $skipped += $copies - $made;
+                continue;
+            }
+            if ( is_wp_error( $duplicator->duplicate( $post_id, array( 'mode' => Duplicator::MODE_CLONE ) ) ) ) {
                 ++$skipped;
             } else {
                 ++$done;
             }
         }
 
-        $sendback = remove_query_arg( array( 'duplicated', 'dpp_ids', 'dpp_rewrite', 'dpp_skipped' ), $sendback );
-        $key      = self::BULK_REWRITE === $action ? 'dpp_rewrite' : 'duplicated';
-
-        return add_query_arg( array_filter( array( $key => $done, 'dpp_skipped' => $skipped ) ), $sendback );
+        return add_query_arg( array_filter( array( 'duplicated' => $done, 'dpp_skipped' => $skipped ) ), $sendback );
     }
 
     /**
@@ -270,6 +277,7 @@ final class Row_Actions {
             'window.dppList = ' . wp_json_encode(
                 array(
                     'max'        => $max,
+                    'bulkTotal'  => max( 1, (int) apply_filters( 'dpp_max_bulk_copies', Duplicator::MAX_BULK_TOTAL ) ),
                     'presets'    => array_values( array_filter( array( 2, 5, 10, 25 ), function ( $n ) use ( $max ) { return $n <= $max; } ) ),
                     'bulkAction' => self::BULK_MULTIPLE,
                     'suffix'     => (string) Plugin::instance()->settings()->get( 'title_suffix', '' ),
@@ -285,6 +293,8 @@ final class Row_Actions {
                         'numbered'   => __( 'Number the titles', 'duplicate-pp' ),
                         /* translators: %d: maximum number of copies. */
                         'limit'      => __( 'Up to %d at a time. Copies follow your "What to copy" settings.', 'duplicate-pp' ),
+                        /* translators: 1: maximum copies per item, 2: total limit. */
+                        'limitBulk'  => __( 'Up to %1$d per item for this selection (%2$d copies in total). Copies follow your "What to copy" settings.', 'duplicate-pp' ),
                         /* translators: %s: total number of copies. */
                         'total'      => __( '%s copies will be created in total.', 'duplicate-pp' ),
                         'cancel'     => __( 'Cancel', 'duplicate-pp' ),
@@ -294,7 +304,8 @@ final class Row_Actions {
                         'working'    => __( 'Creating copies…', 'duplicate-pp' ),
                         'example'    => __( 'Hello world', 'duplicate-pp' ),
                     ),
-                )
+                ),
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
             ) . ';',
             'before'
         );

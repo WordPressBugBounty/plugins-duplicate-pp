@@ -45,6 +45,11 @@ final class Duplicator {
     const MAX_COPIES_LIMIT = 100;
 
     /**
+     * Upper limit of copies one bulk "duplicate multiple times" request may create in total.
+     */
+    const MAX_BULK_TOTAL = 250;
+
+    /**
      * Meta key on every copy pointing at the post it was made from.
      */
     const ORIGINAL_META = '_dpp_original';
@@ -214,6 +219,24 @@ final class Duplicator {
     }
 
     /**
+     * Most copies of one item allowed when $items items are copied in one bulk request.
+     *
+     * @param int $items Number of selected items.
+     * @return int
+     */
+    public function max_copies_for_bulk( $items ) {
+        /**
+         * Filters how many copies one bulk "duplicate multiple times" request may create in total.
+         *
+         * @since 4.0.1
+         *
+         * @param int $total Default Duplicator::MAX_BULK_TOTAL.
+         */
+        $total = max( 1, (int) apply_filters( 'dpp_max_bulk_copies', self::MAX_BULK_TOTAL ) );
+        return max( 1, min( $this->max_copies(), (int) floor( $total / max( 1, (int) $items ) ) ) );
+    }
+
+    /**
      * Copy count from the request, clamped to the allowed range.
      *
      * @param string $key Request key.
@@ -221,7 +244,7 @@ final class Duplicator {
      */
     public function requested_count( $key ) {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- callers verify the nonce.
-        $count = isset( $_REQUEST[ $key ] ) ? (int) wp_unslash( $_REQUEST[ $key ] ) : 0;
+        $count = isset( $_REQUEST[ $key ] ) && is_scalar( $_REQUEST[ $key ] ) ? (int) wp_unslash( $_REQUEST[ $key ] ) : 0;
         return $count > 0 ? min( $count, $this->max_copies() ) : 0;
     }
 

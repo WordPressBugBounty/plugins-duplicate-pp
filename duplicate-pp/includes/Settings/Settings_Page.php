@@ -322,8 +322,8 @@ final class Settings_Page {
      */
     private function pick( $input, $key, $allowed ) {
         $values = isset( $input[ $key ] ) ? (array) $input[ $key ] : array();
-        $values = array_map( 'sanitize_key', $values );
-        return array_values( array_intersect( $values, $allowed ) );
+        $values = array_map( 'sanitize_text_field', array_filter( $values, 'is_scalar' ) );
+        return array_values( array_intersect( $values, array_map( 'strval', $allowed ) ) );
     }
 
     /**
@@ -333,6 +333,9 @@ final class Settings_Page {
      * @return string
      */
     private function sanitize_affix( $value ) {
+        if ( ! is_scalar( $value ) ) {
+            return '';
+        }
         $value = wp_check_invalid_utf8( (string) $value );
         $value = wp_strip_all_tags( '.' . $value . '.' );
         $value = preg_replace( '/[\r\n\t ]+/', ' ', substr( $value, 1, -1 ) );

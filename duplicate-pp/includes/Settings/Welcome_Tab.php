@@ -146,10 +146,12 @@ final class Welcome_Tab {
                     <span class="dashicons dashicons-search" aria-hidden="true"></span>
                     <input type="search" id="dpp-search-input" class="dpp-search__input" autocomplete="off"
                         placeholder="<?php esc_attr_e( 'Search posts, pages, products…', 'duplicate-pp' ); ?>"
-                        aria-controls="dpp-search-results" aria-expanded="false">
+                        aria-controls="dpp-search-results" aria-describedby="dpp-search-help">
                     <kbd class="dpp-search__kbd" aria-hidden="true">/</kbd>
                 </div>
-                <div class="dpp-search__results" id="dpp-search-results" role="region" aria-live="polite" hidden></div>
+                <p id="dpp-search-help" class="screen-reader-text"><?php esc_html_e( 'Results appear below as you type. Use the arrow keys to pick a result and Enter to copy it to a new draft, or Tab to its buttons.', 'duplicate-pp' ); ?></p>
+                <div id="dpp-search-status" class="screen-reader-text" role="status" aria-live="polite"></div>
+                <div class="dpp-search__results" id="dpp-search-results" aria-label="<?php esc_attr_e( 'Search results', 'duplicate-pp' ); ?>" hidden></div>
             </div>
         </div>
 
@@ -468,9 +470,9 @@ final class Welcome_Tab {
                     <span class="dpp-list__icon dashicons <?php echo esc_attr( $this->type_icon( $type ) ); ?>" aria-hidden="true"></span>
                     <div class="dpp-list__main">
                         <?php if ( $edit_url ) : ?>
-                            <a class="dpp-list__title" href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html( _draft_or_post_title( $post ) ); ?></a>
+                            <a class="dpp-list__title" href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html( Plugin::post_title( $post ) ); ?></a>
                         <?php else : ?>
-                            <span class="dpp-list__title"><?php echo esc_html( _draft_or_post_title( $post ) ); ?></span>
+                            <span class="dpp-list__title"><?php echo esc_html( Plugin::post_title( $post ) ); ?></span>
                         <?php endif; ?>
                         <span class="dpp-list__meta">
                             <?php echo esc_html( $type ? $type->labels->singular_name : $post->post_type ); ?>
@@ -482,13 +484,13 @@ final class Welcome_Tab {
                             <?php if ( $original instanceof WP_Post ) : ?>
                                 <span aria-hidden="true">·</span>
                                 <?php echo $rewrite ? esc_html__( 'rewrite of', 'duplicate-pp' ) : esc_html__( 'from', 'duplicate-pp' ); ?>
-                                <a href="<?php echo esc_url( get_permalink( $original ) ); ?>"><?php echo esc_html( _draft_or_post_title( $original ) ); ?></a>
+                                <a href="<?php echo esc_url( get_permalink( $original ) ); ?>"><?php echo esc_html( Plugin::post_title( $original ) ); ?></a>
                             <?php endif; ?>
                         </span>
                     </div>
                     <span class="dpp-badge dpp-badge--<?php echo esc_attr( $post->post_status ); ?>"><?php echo esc_html( $status ? $status->label : $post->post_status ); ?></span>
                     <?php if ( $edit_url ) : ?>
-                        <a class="dpp-icon-btn" href="<?php echo esc_url( $edit_url ); ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: post title. */ __( 'Edit “%s”', 'duplicate-pp' ), _draft_or_post_title( $post ) ) ); ?>">
+                        <a class="dpp-icon-btn" href="<?php echo esc_url( $edit_url ); ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: post title. */ __( 'Edit “%s”', 'duplicate-pp' ), Plugin::post_title( $post ) ) ); ?>">
                             <span class="dashicons <?php echo $rewrite ? 'dashicons-arrow-right-alt' : 'dashicons-edit'; ?>" aria-hidden="true"></span>
                         </a>
                     <?php endif; ?>
@@ -520,6 +522,7 @@ final class Welcome_Tab {
         $args = array(
             'post_type'      => $types,
             'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
+            'perm'           => 'editable',
             'posts_per_page' => 8,
             'no_found_rows'  => true,
         );
@@ -539,7 +542,7 @@ final class Welcome_Tab {
             $type    = get_post_type_object( $post->post_type );
             $status  = get_post_status_object( $post->post_status );
             $items[] = array(
-                'title'    => html_entity_decode( _draft_or_post_title( $post ), ENT_QUOTES, 'UTF-8' ),
+                'title'    => html_entity_decode( Plugin::post_title( $post ), ENT_QUOTES, 'UTF-8' ),
                 'type'     => $type ? $type->labels->singular_name : $post->post_type,
                 'icon'     => $this->type_icon( $type ),
                 'status'   => $post->post_status,
@@ -564,6 +567,9 @@ final class Welcome_Tab {
             'recent'    => __( 'Recently edited', 'duplicate-pp' ),
             'results'   => __( 'Results', 'duplicate-pp' ),
             'none'      => __( 'Nothing found. Try another word.', 'duplicate-pp' ),
+            /* translators: %s: number of results. */
+            'count'     => __( '%s results', 'duplicate-pp' ),
+            'countOne'  => __( '1 result', 'duplicate-pp' ),
             'error'     => __( 'Search failed. Please try again.', 'duplicate-pp' ),
             'loading'   => __( 'Searching…', 'duplicate-pp' ),
             'duplicate' => __( 'Duplicate', 'duplicate-pp' ),
